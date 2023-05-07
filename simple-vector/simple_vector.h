@@ -59,11 +59,9 @@ public:
     
     SimpleVector (ReserveProxyObj value){
     Reserve(value.Get());
-    
     }
     
-     SimpleVector(const SimpleVector& other) {
-        Resize(other.size_);
+    SimpleVector(const SimpleVector& other):vec_(other.size_) {
         std::copy(other.begin(), other.end(), begin());
         size_ = other.size_;
         capacity_ = other.capacity_;       
