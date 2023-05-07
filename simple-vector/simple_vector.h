@@ -48,13 +48,8 @@ public:
     }
 
     // Создаёт вектор из size элементов, инициализированных значением value
-    SimpleVector(size_t size, const Type& value):size_(size),capacity_(size){
-       if(size>0){
-       ArrayPtr<Type> buf (size);
-       std::generate(buf.Get(),buf.Get()+size,[value](){return value;});
-       vec_.swap(buf);
-       
-       }
+    SimpleVector(size_t size, const Type& value):size_(size),capacity_(size),vec_(size){
+       std::generate(begin(),begin()+size,[value](){return value;});
     }
 
     // Создаёт вектор из std::initializer_list
