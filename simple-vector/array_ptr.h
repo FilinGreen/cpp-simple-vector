@@ -11,7 +11,7 @@ public:
     ArrayPtr(ArrayPtr&&) = default;
     ArrayPtr& operator=(ArrayPtr&&) = default;
    
-    explicit ArrayPtr(size_t size):raw_ptr_(size<1 ? nullptr : new Type[size]) {}
+    explicit ArrayPtr(size_t size):raw_ptr_(size==0 ? nullptr : new Type[size]) {}
 
     // Конструктор из сырого указателя, хранящего адрес массива в куче либо nullptr
     explicit ArrayPtr(Type* raw_ptr) noexcept :raw_ptr_(raw_ptr==nullptr ? nullptr : raw_ptr) {}   

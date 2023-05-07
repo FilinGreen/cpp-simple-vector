@@ -43,12 +43,8 @@ public:
   
 
     // Создаёт вектор из size элементов, инициализированных значением по умолчанию
-    explicit SimpleVector(size_t size):size_(size),capacity_(size){
-      if(size>0){
-       ArrayPtr<Type> buf (size);
-       std::generate(buf.Get(),buf.Get()+size,[](){return Type{};});
-       vec_.swap(buf);
-      }
+    explicit SimpleVector(size_t size):size_(size),capacity_(size),vec_(size){
+       std::generate(begin(),begin()+size,[](){return Type{};});
     }
 
     // Создаёт вектор из size элементов, инициализированных значением value
@@ -62,16 +58,8 @@ public:
     }
 
     // Создаёт вектор из std::initializer_list
-    SimpleVector(std::initializer_list<Type> init):size_(init.size()),capacity_(init.size()) {
-        ArrayPtr<Type> buf (size_);
-        std::generate(buf.Get(),buf.Get()+size_,[](){return Type{};});
-        vec_.swap(buf);
-        size_t i=0;
-        for(const Type& value:init){
-         vec_[i]=value;
-         ++i;
-        }
-        
+    SimpleVector(std::initializer_list<Type> init):size_(init.size()),capacity_(init.size()),vec_(init.size()) {
+        std::copy(init.begin(),init.end(),begin());    
     }
     
     SimpleVector (ReserveProxyObj value){
@@ -151,6 +139,7 @@ public:
         }else if(size_<new_size){
             std::generate(vec_.Get()+size_,vec_.Get()+new_size,[](){return Type{};});   
         }
+        
              size_=new_size;
         
        }
@@ -196,37 +185,29 @@ public:
 
     // Добавляет элемент в конец вектора
     // При нехватке места увеличивает вдвое вместимость вектора
-    void PushBack(const Type& item) {
-        if(size_==capacity_){
+   void PushBack(const Type& item) { 
+        if(size_==capacity_){ 
+        
+        Reserve(std::max(capacity_*2,size_t {1})); 
+        vec_[size_]=item;   
+        capacity_=std::max(capacity_*2,size_t {1});
+        
+        }else{ 
+        vec_[size_]=item; 
+        } 
+        ++size_;
+    } 
+     
+    void PushBack(Type&& item){ 
+     if(size_==capacity_){ 
+        Reserve(std::max(capacity_*2,size_t {1}));
+        vec_[size_]=std::move(item);  
+        }else{ 
+        vec_[size_]=std::move(item); 
+        } 
+        ++size_;
+    } 
 
-        Resize(std::max(capacity_*2,size_t {1}));
-        vec_[size_]=item;
-        ++size_;
-        capacity_=std::max(capacity_*2,size_t {1});
-        
-        }else{
-        vec_[size_]=item;
-        ++size_;
-        }
-    }
-    
-    void PushBack(Type&& item){
-     if(size_==capacity_){
-        //  /*
-        ArrayPtr<Type> new_array(std::max(capacity_*2,size_t {1}));
-        for(size_t i=0;i<size_;++i){
-        new_array[i]=std::move(vec_[i]);
-        }
-        vec_.swap(new_array);
-        vec_[size_]=std::move(item);
-        ++size_;
-        capacity_=std::max(capacity_*2,size_t {1});
-        
-        }else{
-        vec_[size_]=std::move(item);
-        ++size_;
-        }
-    }
     
   
     
@@ -348,6 +329,5 @@ inline bool operator>(const SimpleVector<Type>& lhs, const SimpleVector<Type>& r
 
 template <typename Type>
 inline bool operator>=(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
-    // Заглушка. Напишите тело самостоятельно
-   return(lhs==rhs||lhs>rhs);
+   return!(lhs<rhs);
 }
