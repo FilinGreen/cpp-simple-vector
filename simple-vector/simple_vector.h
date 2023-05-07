@@ -43,40 +43,33 @@ public:
   
 
     // Создаёт вектор из size элементов, инициализированных значением по умолчанию
-    explicit SimpleVector(size_t size){
-    if(size>0){
-    ArrayPtr<Type> buf (size);
-    std::fill(buf.Get(),buf.Get()+size,value_);
-    vec_.swap(buf);
-    size_=size;
-    capacity_=size;
-    }
+    explicit SimpleVector(size_t size):size_(size),capacity_(size){
+      if(size>0){
+       ArrayPtr<Type> buf (size);
+       std::generate(buf.Get(),buf.Get()+size,[](){return Type{};});
+       vec_.swap(buf);
+      }
     }
 
     // Создаёт вектор из size элементов, инициализированных значением value
-    SimpleVector(size_t size, const Type& value){
+    SimpleVector(size_t size, const Type& value):size_(size),capacity_(size){
        if(size>0){
-       value_=value;
        ArrayPtr<Type> buf (size);
-       std::fill(buf.Get(),buf.Get()+size,value_);
+       std::generate(buf.Get(),buf.Get()+size,[value](){return value;});
        vec_.swap(buf);
-       size_=size;
-       capacity_=size;
+       
        }
     }
 
     // Создаёт вектор из std::initializer_list
-    SimpleVector(std::initializer_list<Type> init) {
-        size_t size=init.size();
-        ArrayPtr<Type> buf (size);
-        std::fill(buf.Get(),buf.Get()+size,value_);
+    SimpleVector(std::initializer_list<Type> init):size_(init.size()),capacity_(init.size()) {
+        ArrayPtr<Type> buf (size_);
+        std::generate(buf.Get(),buf.Get()+size_,[](){return Type{};});
         vec_.swap(buf);
-        size_=size;
-        capacity_=size;
         size_t i=0;
         for(const Type& value:init){
-        vec_[i]=value;
-        ++i;
+         vec_[i]=value;
+         ++i;
         }
         
     }
@@ -84,6 +77,20 @@ public:
     SimpleVector (ReserveProxyObj value){
     Reserve(value.Get());
     
+    }
+    
+     SimpleVector(const SimpleVector& other) {
+        Resize(other.size_);
+        std::copy(other.begin(), other.end(), begin());
+        size_ = other.size_;
+        capacity_ = other.capacity_;       
+    }
+
+    SimpleVector& operator=(const SimpleVector& rhs) {
+    if(*this!=rhs){
+    SimpleVector <Type> buf(rhs);
+    swap(buf);}
+    return *this;
     }
 
     // Возвращает количество элементов в массиве
@@ -137,21 +144,15 @@ public:
     void Resize(size_t new_size) {
     
         if(new_size>capacity_){
-             ArrayPtr<Type> new_vec(std::max(new_size,capacity_*2));
-             for(size_t i=0;i<size_;++i){
-             new_vec[i]=std::move(vec_[i]);      
-             }
-             vec_.swap(new_vec);
+       
+             Reserve(std::max(new_size,capacity_*2));
              std::generate(vec_.Get()+size_,vec_.Get()+new_size,[](){return Type{};});
-             size_=new_size;
-             
-             capacity_=std::max(new_size,capacity_*2);
         
         }else if(size_<new_size){
             std::generate(vec_.Get()+size_,vec_.Get()+new_size,[](){return Type{};});   
-        }else{
-             size_=new_size;
         }
+             size_=new_size;
+        
        }
     
 
@@ -191,42 +192,14 @@ public:
         return vec_.Get()+size_;
     }
     
-    SimpleVector(const SimpleVector& other) {
-        Resize(other.size_);
-        std::copy(other.begin(), other.end(), begin());
-        size_ = other.size_;
-        capacity_ = other.capacity_;
-        
-    }
-
-    SimpleVector& operator=(const SimpleVector& rhs) {
-    size_t size = rhs.GetSize();
-    size_t capacity=rhs.GetCapacity();
-        if(size>capacity_){
-          Resize(std::max(capacity_*2,size));
-          std::copy(rhs.begin(), rhs.end(), begin());
-          size_=size;
-          capacity_=std::max(capacity_*2,size);
-        
-        
-        }else{
-        
-          std::copy(rhs.begin(), rhs.end(), begin());
-          size_=size;
-          capacity_=capacity;
-          }
-        return *this;
-    }
+   
 
     // Добавляет элемент в конец вектора
     // При нехватке места увеличивает вдвое вместимость вектора
     void PushBack(const Type& item) {
         if(size_==capacity_){
-        ArrayPtr<Type> new_array(std::max(capacity_*2,size_t {1}));
-        for(size_t i=0;i<size_;++i){
-        new_array[i]=std::move(vec_[i]);
-        }
-        vec_.swap(new_array);
+
+        Resize(std::max(capacity_*2,size_t {1}));
         vec_[size_]=item;
         ++size_;
         capacity_=std::max(capacity_*2,size_t {1});
@@ -239,6 +212,7 @@ public:
     
     void PushBack(Type&& item){
      if(size_==capacity_){
+        //  /*
         ArrayPtr<Type> new_array(std::max(capacity_*2,size_t {1}));
         for(size_t i=0;i<size_;++i){
         new_array[i]=std::move(vec_[i]);
@@ -264,93 +238,55 @@ public:
     // вместимость вектора должна увеличиться вдвое, а для вектора вместимостью 0 стать равной 1
     Iterator Insert(ConstIterator pos, const Type& value) {
         size_t index=pos-begin();
-        
-         if(capacity_==0){
-          Resize(1);
-          vec_[0]=value;
-          size_=1;
-          capacity_=1;
-          
-        }else if(size_==capacity_){
-          size_t size=size_;
+
+        if(size_==capacity_){      
           ArrayPtr<Type> new_array(size_+1);
-          for(size_t i=0;i<index;++i){
-            new_array[i]=std::move(vec_[i]);
-          }
-          new_array[index]=value;
-          std::copy_backward(begin()+index,end(),new_array.Get()+size_+1);
-          vec_.swap(new_array);
-          size_=size+1;
-          capacity_=capacity_*2;
-          
-          
+          std::move(begin(),begin()+index,new_array.Get());
+          new_array[index]=std::move(value);
+          std::move(end(),begin()+index,new_array.Get()+size_+1);
+          vec_.swap(new_array); 
+          capacity_=std::max(capacity_*2,size_t{1}); 
         }else{
-          std::copy_backward(begin()+index,end(),end()+1);
+          std::move(end(),begin()+index,end()+1);
           vec_[index]=value;
-          ++size_;
         }
+        ++size_;
         return begin()+index;
     }
 
 
 Iterator Insert(ConstIterator pos, Type&& value) {
-        size_t index=pos-begin();
-        
-         if(capacity_==0){
-          Resize(1);
-          vec_[0]=std::move(value);
-          size_=1;
-          capacity_=1;
-          
-        }else if(size_==capacity_){
-          size_t size=size_;
+   size_t index=pos-begin();
+
+        if(size_==capacity_){      
           ArrayPtr<Type> new_array(size_+1);
-          for(size_t i=0;i<index;++i){
-            new_array[i]=std::move(vec_[i]);
-          }
+          std::move(begin(),begin()+index,new_array.Get());
           new_array[index]=std::move(value);
-          
-          for(auto it=begin()+index;it!=end();++it){
-            ++index;
-            new_array[index]=std::move(*it);
-          }
-          
-          vec_.swap(new_array);
-          size_=size+1;
-          capacity_=capacity_*2;
-          
-          
+          std::move(end(),begin()+index,new_array.Get()+size_+1);
+          vec_.swap(new_array); 
+          capacity_=std::max(capacity_*2,size_t{1}); 
         }else{
-          size_t indexx=index;
-          for(auto it=begin()+index;it!=end();++it){
-            ++indexx;
-            vec_[indexx]=std::move(*it);
-          }
+          std::move(end(),begin()+index,end()+1);
           vec_[index]=std::move(value);
-          ++size_;
         }
+        ++size_;
         return begin()+index;
     }
-    
-   
-    
+       
     // "Удаляет" последний элемент вектора. Вектор не должен быть пустым
     void PopBack() noexcept {
-        if(size_>0){
+      assert(size_>0);
         --size_;
-        }
     }
 
 
     // Удаляет элемент вектора в указанной позиции
     Iterator Erase(ConstIterator pos) {
+       assert(size_>0);
        size_t index=0;
-       if(size_>0){
        index=pos-begin();
-       
        std::move(begin()+index+1,end(),begin()+index);
         --size_;
-        }
         return begin()+index;
     }
 
@@ -366,10 +302,10 @@ Iterator Insert(ConstIterator pos, Type&& value) {
    void Reserve(size_t new_capacity){
     
     if(new_capacity>capacity_){
-   ArrayPtr<Type> new_array(new_capacity);
-   std::copy(begin(),end(),new_array.Get());
-   vec_.swap(new_array);
-   capacity_=new_capacity;
+      ArrayPtr<Type> new_array(new_capacity);
+      std::move(begin(),end(),new_array.Get());
+      vec_.swap(new_array);
+      capacity_=new_capacity;
    }
    }
    
@@ -378,7 +314,6 @@ Iterator Insert(ConstIterator pos, Type&& value) {
     size_t size_=0;
     size_t capacity_=0;
     ArrayPtr<Type> vec_;
-    Type value_=Type();
 };
 
 ReserveProxyObj Reserve(size_t capacity_to_reserve) {
@@ -403,8 +338,7 @@ inline bool operator<(const SimpleVector<Type>& lhs, const SimpleVector<Type>& r
 
 template <typename Type>
 inline bool operator<=(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
-    // Заглушка. Напишите тело самостоятельно
-    return(rhs==lhs||lhs<rhs);
+    return!(rhs<lhs);
 }
 
 template <typename Type>

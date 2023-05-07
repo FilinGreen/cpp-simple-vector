@@ -11,20 +11,10 @@ public:
     ArrayPtr(ArrayPtr&&) = default;
     ArrayPtr& operator=(ArrayPtr&&) = default;
    
-    explicit ArrayPtr(size_t size) {
-    if(size<1){
-    raw_ptr_=nullptr;
-    }else{raw_ptr_=new Type[size];}
-       
-    }
+    explicit ArrayPtr(size_t size):raw_ptr_(size<1 ? nullptr : new Type[size]) {}
 
     // Конструктор из сырого указателя, хранящего адрес массива в куче либо nullptr
-    explicit ArrayPtr(Type* raw_ptr) noexcept {
-    if(raw_ptr==nullptr){
-    raw_ptr_=nullptr;
-    }else{
-    raw_ptr_=raw_ptr;}
-    }
+    explicit ArrayPtr(Type* raw_ptr) noexcept :raw_ptr_(raw_ptr==nullptr ? nullptr : raw_ptr) {}   
 
     ~ArrayPtr() {
         delete[] raw_ptr_;
@@ -34,10 +24,8 @@ public:
 
     // Прекращает владением массивом в памяти, возвращает значение адреса массива
     // После вызова метода указатель на массив должен обнулиться
-    [[nodiscard]] Type* Release() noexcept {
-        auto adres=raw_ptr_;
-        raw_ptr_=nullptr;
-        return adres;
+    [[nodiscard]] Type* Release() noexcept { 
+        return std::exchange(raw_ptr_,nullptr);
     }
 
     // Возвращает ссылку на элемент массива с индексом index
@@ -63,10 +51,8 @@ public:
     }
 
     // Обменивается значениям указателя на массив с объектом other
-    void swap(ArrayPtr& other) noexcept {
-       Type* copy = other.Get();
-        other.raw_ptr_ = raw_ptr_;
-        raw_ptr_ = copy;
+    void swap(ArrayPtr& other) noexcept { 
+       std::swap(raw_ptr_,other.raw_ptr_);
     }
 
 private:
