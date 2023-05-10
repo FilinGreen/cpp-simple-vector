@@ -61,10 +61,8 @@ public:
     Reserve(value.Get());
     }
     
-    SimpleVector(const SimpleVector& other):vec_(other.size_) {
-        std::copy(other.begin(), other.end(), begin());
-        size_ = other.size_;
-        capacity_ = other.capacity_;       
+    SimpleVector(const SimpleVector& other):size_(other.size_),capacity_(other.capacity_),vec_(other.size_){
+        std::copy(other.begin(), other.end(), begin());      
     }
 
     SimpleVector& operator=(const SimpleVector& rhs) {
@@ -180,14 +178,10 @@ public:
     // При нехватке места увеличивает вдвое вместимость вектора
    void PushBack(const Type& item) { 
         if(size_==capacity_){ 
-        
         Reserve(std::max(capacity_*2,size_t {1})); 
-        vec_[size_]=item;   
-        capacity_=std::max(capacity_*2,size_t {1});
+        }
         
-        }else{ 
-        vec_[size_]=item; 
-        } 
+        vec_[size_]=item;  
         ++size_;
     } 
      
